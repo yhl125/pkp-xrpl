@@ -21,9 +21,9 @@
     "url": "https://github.com/yhl125/pkp-xrpl.git"
   },
   "dependencies": {
-    "@lit-protocol/lit-node-client": "^6.4.2",
-    "@lit-protocol/pkp-base": "^6.4.2",
-    "@lit-protocol/types": "^6.4.2",
+    "@lit-protocol/lit-node-client": "^6.4.4",
+    "@lit-protocol/pkp-base": "^6.4.4",
+    "@lit-protocol/types": "^6.4.4",
     "xrpl": "^4.0.0"
   },
   "devDependencies": {

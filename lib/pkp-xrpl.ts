@@ -2,11 +2,8 @@ import { PKPBase } from '@lit-protocol/pkp-base';
 import { PKPBaseProp, PKPWallet, SigResponse } from '@lit-protocol/types';
 import * as xrpl from 'xrpl';
 import { Transaction, validate, ValidationError, verifySignature } from 'xrpl';
-import { hashSignedTx } from 'xrpl/src/utils/hashes';
 import BigNumber from 'bignumber.js';
-import { omitBy } from 'xrpl/src/utils/collections';
 import { hexToBytes } from '@xrplf/isomorphic/utils';
-import Sha512 from 'ripple-keypairs/src/utils/Sha512';
 import { DER } from '@noble/curves/abstract/weierstrass';
 import {
   classicAddressToXAddress,
@@ -19,12 +16,14 @@ import {
   encode,
   XrplDefinitions,
 } from 'ripple-binary-codec';
+import { hashSignedTx } from './hashSignedTx';
+import Sha512 from './Sha512';
+import { omitBy } from './omitBy';
 
 export class PKPXrplWallet implements PKPWallet {
   private readonly pkpBase: PKPBase;
   public readonly publicKey: string;
   public readonly classicAddress: string;
-  // readonly publicKey: Secp256k1PublicKey;
 
   constructor(prop: PKPBaseProp) {
     this.pkpBase = PKPBase.createInstance(prop);
