@@ -1,9 +1,7 @@
 import { PKPBase } from '@lit-protocol/pkp-base';
 import { PKPBaseProp, PKPWallet, SigResponse } from '@lit-protocol/types';
-import * as xrpl from 'xrpl';
-import { Transaction, validate, ValidationError, verifySignature } from 'xrpl';
+import { deriveAddress } from 'ripple-keypairs';
 import BigNumber from 'bignumber.js';
-import { hexToBytes } from '@xrplf/isomorphic/utils';
 import { DER } from '@noble/curves/abstract/weierstrass';
 import {
   classicAddressToXAddress,
@@ -19,6 +17,9 @@ import {
 import { hashSignedTx } from './hashSignedTx';
 import Sha512 from './Sha512';
 import { omitBy } from './omitBy';
+import { hexToBytes } from './hexToBytes';
+import { Transaction, validate } from './models/transactions';
+import { ValidationError } from './errors';
 
 export class PKPXrplWallet implements PKPWallet {
   private readonly pkpBase: PKPBase;
@@ -28,7 +29,7 @@ export class PKPXrplWallet implements PKPWallet {
   constructor(prop: PKPBaseProp) {
     this.pkpBase = PKPBase.createInstance(prop);
     this.publicKey = this.pkpBase.compressedPubKey;
-    this.classicAddress = xrpl.deriveAddress(this.pkpBase.compressedPubKey);
+    this.classicAddress = deriveAddress(this.pkpBase.compressedPubKey);
   }
 
   public async sign(
@@ -95,17 +96,6 @@ export class PKPXrplWallet implements PKPWallet {
       tx_blob: serialized,
       hash: hashSignedTx(serialized),
     };
-  }
-
-  /**
-   * Verifies a signed transaction offline.
-   *
-   * @param signedTransaction - A signed transaction (hex string of signTransaction result) to be verified offline.
-   * @returns Returns true if a signedTransaction is valid.
-   * @throws {Error} Transaction is missing a signature, TxnSignature
-   */
-  public verifyTransaction(signedTransaction: Transaction | string): boolean {
-    return verifySignature(signedTransaction, this.publicKey);
   }
 
   /**
@@ -177,7 +167,7 @@ export class PKPXrplWallet implements PKPWallet {
   }
 
   getAddress(): Promise<string> {
-    const address = xrpl.deriveAddress(this.pkpBase.compressedPubKey);
+    const address = deriveAddress(this.pkpBase.compressedPubKey);
     return Promise.resolve(address);
   }
   /**

@@ -1,7 +1,8 @@
-import { Transaction, ValidationError } from "xrpl"
 import { sha512 } from '@xrplf/isomorphic/sha512'
 import { bytesToHex, hexToBytes } from '@xrplf/isomorphic/utils'
 import { decode, encode } from 'ripple-binary-codec'
+import { ValidationError } from './errors'
+import { Transaction } from './models/transactions'
 
 const HASH_BYTES = 32
 
