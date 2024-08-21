@@ -1,10 +1,9 @@
-import { sha512 } from '@xrplf/isomorphic/sha512'
-import { bytesToHex, hexToBytes } from '@xrplf/isomorphic/utils'
 import { decode, encode } from 'ripple-binary-codec'
 import { ValidationError } from './errors'
 import { Transaction } from './models/transactions'
+import { createHash } from 'crypto'
 
-const HASH_BYTES = 32
+const HASH_SIZE = 64
 
 /**
  * Compute a sha512Half Hash of a hex string.
@@ -13,7 +12,11 @@ const HASH_BYTES = 32
  * @returns Hash of hex.
  */
 function sha512Half(hex: string): string {
-  return bytesToHex(sha512(hexToBytes(hex)).slice(0, HASH_BYTES))
+  return createHash('sha512')
+    .update(Buffer.from(hex, 'hex'))
+    .digest('hex')
+    .toUpperCase()
+    .slice(0, HASH_SIZE)
 }
 
 enum HashPrefix {
@@ -62,11 +65,7 @@ export function hashSignedTx(tx: Transaction | string): string {
     txObject = tx
   }
 
-  if (
-    txObject.TxnSignature === undefined &&
-    txObject.Signers === undefined &&
-    txObject.SigningPubKey === undefined
-  ) {
+  if (txObject.TxnSignature === undefined && txObject.Signers === undefined) {
     throw new ValidationError('The transaction must be signed to hash it.')
   }
 

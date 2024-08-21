@@ -15,11 +15,11 @@ import {
   XrplDefinitions,
 } from 'ripple-binary-codec';
 import { hashSignedTx } from './hashSignedTx';
-import Sha512 from './Sha512';
 import { omitBy } from './omitBy';
 import { hexToBytes } from './hexToBytes';
 import { Transaction, validate } from './models/transactions';
 import { ValidationError } from './errors';
+import * as hashjs from 'hash.js';
 
 export class PKPXrplWallet implements PKPWallet {
   private readonly pkpBase: PKPBase;
@@ -135,11 +135,17 @@ export class PKPXrplWallet implements PKPWallet {
     return this.signWithLit(hexToBytes(encodeForSigning(tx, definitions)));
   }
 
+  private hash(message: Uint8Array): Uint8Array {
+    return Uint8Array.from(
+      hashjs.sha512().update(message).digest().slice(0, 32)
+    );
+  }
+
   private async signWithLit(message: Uint8Array): Promise<string> {
-    const signature = await this.runSign(Sha512.half(message));
+    const signature = await this.runSign(this.hash(message));
     const derhexSig = DER.hexFromSig({
-      r: BigInt(signature.r),
-      s: BigInt(signature.s),
+      r: BigInt('0x' + signature.r),
+      s: BigInt('0x' + signature.s),
     });
     return derhexSig.toUpperCase();
   }
