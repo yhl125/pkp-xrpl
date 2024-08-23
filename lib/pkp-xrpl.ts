@@ -32,6 +32,15 @@ export class PKPXrplWallet implements PKPWallet {
     this.classicAddress = deriveAddress(this.pkpBase.compressedPubKey);
   }
 
+  /**
+   * Alias for wallet.classicAddress.
+   *
+   * @returns The wallet's classic address.
+   */
+  public get address(): string {
+    return this.classicAddress;
+  }
+
   public async sign(
     transaction: Transaction,
     multisign?: boolean | string,
