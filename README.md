@@ -1,52 +1,73 @@
 # pkp-xrpl
 
-`pkp-xrpl` is a modified version of the Wallet module from `xrpl.js`, designed to work with PKP (Programmable Key Pair) wallets.
+`pkp-xrpl` is a modified version of the Wallet from `xrpl.js`, designed specifically to work with PKP (Programmable Key Pair) wallets on the XRP Ledger (XRPL). It provides seamless integration between Lit Protocol's PKP system and XRPL transactions.
 
 ## Table of Contents
 
+- [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
 - [API Reference](#api-reference)
-- [Example](#example)
+- [Examples](#examples)
 - [Contributing](#contributing)
 - [License](#license)
 
+## Features
+
+- Create and manage XRPL wallets using Lit Protocol's PKP system
+- Sign XRPL transactions securely with PKP
+- Support for both classic and X-addresses
+- Seamless integration with `xrpl.js` library
+
 ## Installation
 
-You can install `pkp-xrpl` using npm, yarn, or pnpm:
+Install `pkp-xrpl` and its peer dependency `xrpl` using npm, yarn, or pnpm:
 
 ```bash
-npm install pkp-xrpl xrpl
+npm install pkp-xrpl xrpl @lit-protocol/lit-node-client
 
 # or
-
-yarn add pkp-xrpl xrpl
+yarn add pkp-xrpl xrpl @lit-protocol/lit-node-client
 
 # or
-
-pnpm add pkp-xrpl xrpl
+pnpm add pkp-xrpl xrpl @lit-protocol/lit-node-client
 ```
 
 ## Usage
 
-To use `pkp-xrpl`, you need to import the `PKPXrplWallet` class and initialize it with your PKP wallet details. Here's a basic example:
+Here's a basic example of how to use `pkp-xrpl`:
 
 ```typescript
 import { PKPXrplWallet } from 'pkp-xrpl';
+import { LitNodeClient } from '@lit-protocol/lit-node-client';
 import { Client } from 'xrpl';
 
-const pkpWallet = new PKPXrplWallet({
-  controllerSessionSigs: sessionSigs,
-  pkpPubKey: currentAccount.publicKey,
-  litNodeClient,
-});
+async function main() {
+  // Initialize Lit Node Client
+  const litNodeClient = new LitNodeClient({ litNetwork: 'datil-dev' });
+  await litNodeClient.connect();
 
-await pkpWallet.init();
+  // Create PKPXrplWallet instance
+  const pkpWallet = new PKPXrplWallet({
+    controllerSessionSigs: sessionSigs, // Obtained from Lit login process
+    pkpPubKey: pkpPubKey, // Obtained from Lit login process
+    litNodeClient,
+  });
 
-const client = new Client('wss://s.altnet.rippletest.net:51233');
-await client.connect();
+  // Initialize the wallet
+  await pkpWallet.init();
 
-// Now you can use pkpWallet and client for XRPL transactions
+  console.log('Wallet classic address:', pkpWallet.classicAddress);
+  console.log('Wallet X-address:', pkpWallet.getXAddress());
+
+  // Connect to XRPL
+  const client = new Client('wss://s.altnet.rippletest.net:51233');
+  await client.connect();
+
+  // Now you can use pkpWallet and client for XRPL transactions
+}
+
+main().catch(console.error);
 ```
 
 ## API Reference
@@ -61,74 +82,72 @@ The main class for interacting with XRPL using a PKP wallet.
 new PKPXrplWallet({
   controllerSessionSigs: SessionSigs;
   pkpPubKey: string;
-  litNodeClient: ILitNodeClient;
+  litNodeClient: LitNodeClient;
 })
 ```
 
+#### Properties
+
+- `publicKey: string` - The compressed public key of the PKP.
+- `classicAddress: string` - The classic address derived from the public key.
+- `address: string` - Alias for `classicAddress`.
+
 #### Methods
 
-- `init(): Promise<void>` - Initializes the wallet.
-- `sign(transaction: any): Promise<{ tx_blob: string; hash: string }>` - Signs a transaction.
-- `getClassicAddress(): string` - Returns the classic address of the wallet.
+- `init(): Promise<void>` - Initializes the wallet. Must be called before using other methods.
+- `sign(transaction: Transaction, multisign?: boolean | string, definitions?: XrplDefinitions): Promise<{ tx_blob: string; hash: string }>` - Signs a transaction. Supports multisigning.
+- `getXAddress(tag?: number | false, isTestnet?: boolean): string` - Gets an X-address for the wallet.
+- `getAddress(): Promise<string>` - Returns the classic address of the wallet.
+- `runLitAction(toSign: Uint8Array, sigName: string): Promise<any>` - Runs a Lit Action to sign data.
+- `runSign(toSign: Uint8Array): Promise<SigResponse>` - Signs data using the PKP.
 
-### `Client`
+## Examples
 
-The `Client` class from `xrpl.js` is used to interact with the XRPL network.
-
-## Example
-
-Here's a complete example demonstrating how to use `pkp-xrpl` to send a payment on the XRPL testnet:
+### Signing and Submitting a Transaction
 
 ```typescript
 import { PKPXrplWallet } from 'pkp-xrpl';
-import {
-  TransactionMetadata,
-  Client,
-  xrpToDrops,
-  dropsToXrp,
-  getBalanceChanges,
-} from 'xrpl';
+import { Client, xrpToDrops } from 'xrpl';
 
-async function main() {
-  // Initialize PKP Wallet
-  const pkpWallet = new PKPXrplWallet({
-    controllerSessionSigs: sessionSigs,
-    pkpPubKey: currentAccount.publicKey,
-    litNodeClient,
-  });
-  await pkpWallet.init();
-  console.log('Wallet address:', pkpWallet.address);
-
-  // Connect to XRPL
+async function sendPayment(pkpWallet: PKPXrplWallet, destination: string, amount: string) {
   const client = new Client('wss://s.altnet.rippletest.net:51233');
   await client.connect();
-  console.log('Connected to XRPL:', client.isConnected());
 
-  // Prepare transaction
   const prepared = await client.autofill({
     TransactionType: 'Payment',
     Account: pkpWallet.address,
-    Amount: xrpToDrops('2'),
-    Destination: 'rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe',
+    Amount: xrpToDrops(amount),
+    Destination: destination,
   });
 
-  // Sign and submit transaction
   const signed = await pkpWallet.sign(prepared);
-  const tx = await client.submitAndWait(signed.tx_blob);
+  const result = await client.submitAndWait(signed.tx_blob);
 
-  // Check results
-  console.log('Transaction result:', (tx.result.meta as TransactionMetadata).TransactionResult);
-  console.log('Balance changes:', JSON.stringify(getBalanceChanges(tx.result.meta as TransactionMetadata), null, 2));
-
+  console.log('Transaction result:', result.result.meta.TransactionResult);
   await client.disconnect();
 }
 
-main().catch(console.error);
+// Usage
+sendPayment(pkpWallet, 'rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe', '10').catch(console.error);
+```
+
+### Using X-addresses
+
+```typescript
+const xAddress = pkpWallet.getXAddress(12345, true); // With tag 12345, testnet
+console.log('X-address:', xAddress);
 ```
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
 ## License
-Apache 2.0
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
