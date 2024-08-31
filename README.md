@@ -94,8 +94,8 @@ new PKPXrplWallet({
 
 #### Methods
 
-- `init(): Promise<void>` - Initializes the wallet. Must be called before using other methods.
-- `sign(transaction: Transaction, multisign?: boolean | string, definitions?: XrplDefinitions): Promise<{ tx_blob: string; hash: string }>` - Signs a transaction. Supports multisigning.
+- `init(): Promise<void>` - Initializes the wallet. This method is analogous to `LitNodeClient.connect()`. Either `init()` or `LitNodeClient.connect()` must be called before using other methods
+- `sign(transaction: Transaction, multisign?: boolean | string, definitions?: XrplDefinitions): Promise<{ tx_blob: string; hash: string }>` - Signs a transaction.
 - `getXAddress(tag?: number | false, isTestnet?: boolean): string` - Gets an X-address for the wallet.
 - `getAddress(): Promise<string>` - Returns the classic address of the wallet.
 - `runLitAction(toSign: Uint8Array, sigName: string): Promise<any>` - Runs a Lit Action to sign data.
@@ -143,9 +143,9 @@ console.log('X-address:', xAddress);
 Contributions are welcome! Please feel free to submit a Pull Request.
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
+2. Create your feature branch (`git checkout -b feature/something`)
+3. Commit your changes (`git commit -m 'feat: add something'`)
+4. Push to the branch (`git push origin feature/something`)
 5. Open a Pull Request
 
 ## License
