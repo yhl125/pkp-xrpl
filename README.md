@@ -1,24 +1,83 @@
 # pkp-xrpl
 
-This module is a modified version of Wallet from `xrpl.js`.
+`pkp-xrpl` is a modified version of the Wallet module from `xrpl.js`, designed to work with PKP (Programmable Key Pair) wallets.
 
-# Getting Started
+## Table of Contents
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [API Reference](#api-reference)
+- [Example](#example)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Installation
 
+You can install `pkp-xrpl` using npm, yarn, or pnpm:
+
 ```bash
 npm install pkp-xrpl xrpl
-```
 
-```bash
+# or
+
 yarn add pkp-xrpl xrpl
-```
 
-```bash
+# or
+
 pnpm add pkp-xrpl xrpl
 ```
 
-# Examples
+## Usage
+
+To use `pkp-xrpl`, you need to import the `PKPXrplWallet` class and initialize it with your PKP wallet details. Here's a basic example:
+
+```typescript
+import { PKPXrplWallet } from 'pkp-xrpl';
+import { Client } from 'xrpl';
+
+const pkpWallet = new PKPXrplWallet({
+  controllerSessionSigs: sessionSigs,
+  pkpPubKey: currentAccount.publicKey,
+  litNodeClient,
+});
+
+await pkpWallet.init();
+
+const client = new Client('wss://s.altnet.rippletest.net:51233');
+await client.connect();
+
+// Now you can use pkpWallet and client for XRPL transactions
+```
+
+## API Reference
+
+### `PKPXrplWallet`
+
+The main class for interacting with XRPL using a PKP wallet.
+
+#### Constructor
+
+```typescript
+new PKPXrplWallet({
+  controllerSessionSigs: SessionSigs;
+  pkpPubKey: string;
+  litNodeClient: ILitNodeClient;
+})
+```
+
+#### Methods
+
+- `init(): Promise<void>` - Initializes the wallet.
+- `sign(transaction: any): Promise<{ tx_blob: string; hash: string }>` - Signs a transaction.
+- `getClassicAddress(): string` - Returns the classic address of the wallet.
+
+### `Client`
+
+The `Client` class from `xrpl.js` is used to interact with the XRPL network.
+
+## Example
+
+Here's a complete example demonstrating how to use `pkp-xrpl` to send a payment on the XRPL testnet:
 
 ```typescript
 import { PKPXrplWallet } from 'pkp-xrpl';
@@ -30,60 +89,46 @@ import {
   getBalanceChanges,
 } from 'xrpl';
 
-const pkpWallet = new PKPXrplWallet({
-  controllerSessionSigs: sessionSigs,
-  pkpPubKey: currentAccount.publicKey,
-  litNodeClient,
-});
-await pkpWallet.init();
-console.log(pkpWallet.classicAddress);
+async function main() {
+  // Initialize PKP Wallet
+  const pkpWallet = new PKPXrplWallet({
+    controllerSessionSigs: sessionSigs,
+    pkpPubKey: currentAccount.publicKey,
+    litNodeClient,
+  });
+  await pkpWallet.init();
+  console.log('Wallet address:', pkpWallet.address);
 
-const client = new Client('wss://s.altnet.rippletest.net:51233');
-await client.connect();
-console.log(client.isConnected());
+  // Connect to XRPL
+  const client = new Client('wss://s.altnet.rippletest.net:51233');
+  await client.connect();
+  console.log('Connected to XRPL:', client.isConnected());
 
-const { classicAddressToFund, balance } = await requestFunding(
-  {},
-  client,
-  0,
-  pkpWallet.classicAddress,
-  {
-    destination: pkpWallet.classicAddress,
-    userAgent: 'xrpl.js',
-  }
-);
-console.log(classicAddressToFund, balance);
+  // Prepare transaction
+  const prepared = await client.autofill({
+    TransactionType: 'Payment',
+    Account: pkpWallet.address,
+    Amount: xrpToDrops('2'),
+    Destination: 'rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe',
+  });
 
-// Prepare transaction -------------------------------------------------------
-const prepared = await client.autofill({
-  TransactionType: 'Payment',
-  Account: pkpWallet.classicAddress,
-  Amount: xrpToDrops('2'),
-  Destination: 'rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe',
-});
-const max_ledger = (prepared as any).LastLedgerSequence;
-console.log('Prepared transaction instructions:', prepared);
-console.log('Transaction cost:', dropsToXrp((prepared as any).Fee), 'XRP');
-console.log('Transaction expires after ledger:', max_ledger);
-// Sign prepared instructions ------------------------------------------------
-const signed = await pkpWallet.sign(prepared);
-console.log('Identifying hash:', signed.hash);
-console.log('Signed blob:', signed.tx_blob);
+  // Sign and submit transaction
+  const signed = await pkpWallet.sign(prepared);
+  const tx = await client.submitAndWait(signed.tx_blob);
 
-// Submit signed blob --------------------------------------------------------
-const tx = await client.submitAndWait(signed.tx_blob);
-// Check transaction results -------------------------------------------------
-console.log(
-  'Transaction result:',
-  (tx.result.meta as TransactionMetadata).TransactionResult
-);
-console.log(
-  'Balance changes:',
-  JSON.stringify(
-    getBalanceChanges(tx.result.meta as TransactionMetadata),
-    null,
-    2
-  )
-);
-await client.disconnect();
+  // Check results
+  console.log('Transaction result:', (tx.result.meta as TransactionMetadata).TransactionResult);
+  console.log('Balance changes:', JSON.stringify(getBalanceChanges(tx.result.meta as TransactionMetadata), null, 2));
+
+  await client.disconnect();
+}
+
+main().catch(console.error);
 ```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+Apache 2.0
